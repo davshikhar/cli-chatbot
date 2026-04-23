@@ -4,6 +4,7 @@ from typing import Optional, Any
 from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters, types
 from mcp.client.stdio import stdio_client
+import re
 
 
 class MCPClient:
@@ -42,14 +43,22 @@ class MCPClient:
         return self._session
 
     async def list_tools(self) -> list[types.Tool]:
-        # TODO: Return a list of tools defined by the MCP server
-        return []
+        # Return a list of tools defined by the MCP server
+        result = await self.session().list_tools()
+        #this will get access to our session and then is goint to get the definition or list of tools implemented by server
+        for tool in result.tools:
+            print(f"Tool name: '{tool.name}'")  # debug
+
+        for tool in result.tools:
+            tool.name = re.sub(r'[^a-zA-Z0-9_-]', '_', tool.name)[:128]
+            
+        return result.tools
 
     async def call_tool(
         self, tool_name: str, tool_input: dict
     ) -> types.CallToolResult | None:
-        # TODO: Call a particular tool and return the result
-        return None
+        # Call a particular tool and return the result
+        return await self.session().call_tool(tool_name, tool_input)
 
     async def list_prompts(self) -> list[types.Prompt]:
         # TODO: Return a list of prompts defined by the MCP server
@@ -79,10 +88,11 @@ class MCPClient:
 async def main():
     async with MCPClient(
         # If using Python without UV, update command to 'python' and remove "run" from args.
-        command="uv",
-        args=["run", "mcp_server.py"],
+        command="python",
+        args=["mcp_server.py"],
     ) as _client:
-        pass
+        result = await _client.list_tools()
+        print(result)
 
 
 if __name__ == "__main__":
